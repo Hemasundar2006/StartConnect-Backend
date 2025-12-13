@@ -32,6 +32,11 @@ const userSchema = new mongoose.Schema({
     },
     // For students: School/University info could go here or in a separate profile
     schoolEmail: String,
+    // For Student User: Link to Student Profile
+    studentProfileId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'StudentProfile',
+    },
 
     // For startup leaders/members: Link to a Team
     teamId: {

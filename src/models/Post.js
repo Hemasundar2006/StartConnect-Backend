@@ -20,6 +20,17 @@ const postSchema = new mongoose.Schema({
         default: false,
     },
     tags: [String],
+    // Images/Photos for the post
+    images: [{
+        url: {
+            type: String,
+            required: true,
+        },
+        filename: String,
+        originalName: String,
+        mimetype: String,
+        size: Number,
+    }],
 }, { timestamps: true });
 
 // Pre-save hook to limit posts

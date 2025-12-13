@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const StartupProfile = require('../models/StartupProfile');
+const StudentProfile = require('../models/StudentProfile');
 const Team = require('../models/Team');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -73,11 +74,55 @@ exports.register = async (req, res) => {
             await user.save();
         }
 
-        // Send verification email
-        const verificationUrl = `${req.protocol}://${req.get('host')}/api/auth/verify-email/${verificationToken}`;
-        const message = `Please verify your email by clicking on the link: ${verificationUrl}\n\nToken: ${verificationToken}`;
+        // Handle Student specifics
+        if (role === 'Student') {
+            // Create an empty student profile for the student
+            const studentProfile = await StudentProfile.create({
+                userId: user._id
+            });
 
-        // await sendEmail(email, 'Email Verification', message); // Commented out to prevent errors without env setup
+            user.studentProfileId = studentProfile._id;
+            await user.save();
+        }
+
+        // Send welcome and verification email
+        const baseUrl = process.env.FRONTEND_URL || `${req.protocol}://${req.get('host')}`;
+        const verificationUrl = `${baseUrl}/api/auth/verify-email?token=${verificationToken}`;
+        
+        const { createWelcomeEmailHTML } = require('../utils/nodemailer_config');
+        
+        // Create welcome email content
+        const welcomeSubject = `Welcome to StartConnect, ${name}! 🎉`;
+        const welcomeHTML = createWelcomeEmailHTML(name, role, verificationUrl);
+        const welcomeText = `
+Welcome to StartConnect, ${name}!
+
+We're thrilled to have you join our community! Your account has been successfully created.
+
+As a ${role} on StartConnect, you can:
+${role === 'Startup' 
+    ? '- Showcase your company and journey\n- Connect with talented students\n- Post opportunities and updates\n- Build your team'
+    : '- Complete your profile with skills and experience\n- Discover exciting startup opportunities\n- Connect with innovative companies\n- Build your professional network'
+}
+
+Next Step: Please verify your email address to get started.
+
+Verification Link: ${verificationUrl}
+
+If you have any questions, feel free to reach out to our support team.
+
+Best regards,
+The StartConnect Team
+        `;
+
+        // Send welcome email
+        try {
+            await sendEmail(email, welcomeSubject, welcomeText, welcomeHTML);
+            console.log(`Welcome email sent to ${email}`);
+        } catch (emailError) {
+            console.error('Error sending welcome email:', emailError);
+            // Continue with registration even if email fails
+        }
 
         res.status(201).json({
             _id: user.id,
@@ -85,7 +130,7 @@ exports.register = async (req, res) => {
             email: user.email,
             role: user.role,
             token: generateToken(user.id),
-            details: 'Verification email sent (simulated). Check console/logs in real app.'
+            message: 'Registration successful! Welcome email sent.'
         });
 
     } catch (error) {
