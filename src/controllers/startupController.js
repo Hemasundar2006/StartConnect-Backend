@@ -450,11 +450,40 @@ exports.updateJourney = async (req, res) => {
     try {
         const { story, milestones, achievements } = req.body;
 
-        const startupProfile = await StartupProfile.findOne({ userId: req.user.id });
+        // Use _id for consistency with Mongoose
+        const userId = req.user._id || req.user.id;
+
+        // Check user role first
+        if (req.user.role !== 'Startup') {
+            return res.status(403).json({ 
+                message: `User role '${req.user.role}' is not authorized. Only Startup users can update journey.`,
+                code: 'INVALID_ROLE',
+                userRole: req.user.role
+            });
+        }
+
+        console.log('Update journey request - User ID:', userId);
+        console.log('Update journey request - User role:', req.user.role);
+
+        const startupProfile = await StartupProfile.findOne({ userId: userId });
 
         if (!startupProfile) {
-            return res.status(404).json({ message: 'Startup profile not found' });
+            console.log('No startup profile found for user:', userId);
+            // Check if user exists and has startupProfileId set
+            const User = require('../models/User');
+            const user = await User.findById(userId);
+            
+            return res.status(404).json({ 
+                message: 'Startup profile not found. Please complete your startup registration.',
+                code: 'PROFILE_NOT_FOUND',
+                userId: userId.toString(),
+                userRole: req.user.role,
+                hasStartupProfileId: !!user?.startupProfileId,
+                suggestion: 'If you just registered, there may have been an issue during profile creation. Please contact support or try registering again.'
+            });
         }
+
+        console.log('Startup profile found:', startupProfile._id);
 
         // Initialize journey if it doesn't exist
         if (!startupProfile.journey) {
