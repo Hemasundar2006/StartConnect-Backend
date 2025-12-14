@@ -84,25 +84,60 @@ exports.inviteTeamMember = async (req, res) => {
             return res.status(400).json({ message: 'Email is required' });
         }
 
-        // Check if user has a startup profile first
-        const startupProfile = await StartupProfile.findOne({ userId: req.user.id });
-        if (!startupProfile) {
+        // Use _id for consistency with Mongoose
+        const userId = req.user._id || req.user.id;
+        
+        // Debug logging
+        console.log('Invite request - User ID:', userId);
+        console.log('Invite request - User role:', req.user.role);
+        console.log('Invite request - User object:', { id: req.user.id, _id: req.user._id });
+
+        // Check user role first
+        if (req.user.role !== 'Startup') {
             return res.status(403).json({ 
-                message: 'Startup profile not found. Please complete your startup registration first.',
-                code: 'NO_STARTUP_PROFILE'
+                message: `User role '${req.user.role}' is not authorized. Only Startup users can invite team members.`,
+                code: 'INVALID_ROLE',
+                userRole: req.user.role
             });
         }
 
-        // Check if user is a leader
-        const team = await Team.findOne({ leaderId: req.user.id }).populate('companyId');
+        // Check if user has a startup profile first
+        const startupProfile = await StartupProfile.findOne({ userId: userId });
+        if (!startupProfile) {
+            console.log('No startup profile found for user:', userId);
+            return res.status(403).json({ 
+                message: 'Startup profile not found. Please complete your startup registration first.',
+                code: 'NO_STARTUP_PROFILE',
+                userId: userId.toString()
+            });
+        }
+
+        console.log('Startup profile found:', startupProfile._id);
+
+        // Check if user is a leader - try both _id and id formats
+        let team = await Team.findOne({ leaderId: userId }).populate('companyId');
         if (!team) {
+            // Try with string format
+            team = await Team.findOne({ leaderId: userId.toString() }).populate('companyId');
+        }
+        if (!team) {
+            // Try with ObjectId format
+            const mongoose = require('mongoose');
+            team = await Team.findOne({ leaderId: new mongoose.Types.ObjectId(userId) }).populate('companyId');
+        }
+        
+        if (!team) {
+            console.log('No team found for leader:', userId);
             return res.status(403).json({ 
                 message: 'You are not a team leader. Team may not have been created during registration.',
                 code: 'NOT_TEAM_LEADER',
-                userId: req.user.id,
-                startupProfileId: startupProfile._id
+                userId: userId.toString(),
+                startupProfileId: startupProfile._id.toString(),
+                suggestion: 'Please ensure you completed registration as a Startup. If you just registered, try logging out and back in, or contact support.'
             });
         }
+
+        console.log('Team found:', team._id);
 
         // Check if email is already invited
         const existingInvite = team.pendingInvites.find(invite => invite.email === email);
