@@ -84,10 +84,24 @@ exports.inviteTeamMember = async (req, res) => {
             return res.status(400).json({ message: 'Email is required' });
         }
 
+        // Check if user has a startup profile first
+        const startupProfile = await StartupProfile.findOne({ userId: req.user.id });
+        if (!startupProfile) {
+            return res.status(403).json({ 
+                message: 'Startup profile not found. Please complete your startup registration first.',
+                code: 'NO_STARTUP_PROFILE'
+            });
+        }
+
         // Check if user is a leader
         const team = await Team.findOne({ leaderId: req.user.id }).populate('companyId');
         if (!team) {
-            return res.status(403).json({ message: 'You are not a team leader' });
+            return res.status(403).json({ 
+                message: 'You are not a team leader. Team may not have been created during registration.',
+                code: 'NOT_TEAM_LEADER',
+                userId: req.user.id,
+                startupProfileId: startupProfile._id
+            });
         }
 
         // Check if email is already invited
@@ -102,10 +116,10 @@ exports.inviteTeamMember = async (req, res) => {
             return res.status(400).json({ message: 'User is already a team member' });
         }
 
-        // Get startup profile details
-        const startupProfile = await StartupProfile.findById(team.companyId);
-        if (!startupProfile) {
-            return res.status(404).json({ message: 'Startup profile not found' });
+        // Verify startup profile matches team's company
+        const companyId = team.companyId._id ? team.companyId._id.toString() : team.companyId.toString();
+        if (startupProfile._id.toString() !== companyId) {
+            return res.status(404).json({ message: 'Startup profile does not match team company' });
         }
 
         // Get inviter details
@@ -284,17 +298,36 @@ exports.acceptInvitation = async (req, res) => {
 // @access  Protected (Startup)
 exports.getProfile = async (req, res) => {
     try {
+        // Check if user has Startup role
+        if (req.user.role !== 'Startup') {
+            return res.status(403).json({ 
+                message: `User role '${req.user.role}' is not authorized. Only Startup users can access this endpoint.`,
+                code: 'INVALID_ROLE'
+            });
+        }
+
         const startupProfile = await StartupProfile.findOne({ userId: req.user.id })
             .populate('userId', 'name email role');
 
         if (!startupProfile) {
-            return res.status(404).json({ message: 'Startup profile not found' });
+            // Check if user exists and has startupProfileId set
+            const User = require('../models/User');
+            const user = await User.findById(req.user.id);
+            
+            return res.status(404).json({ 
+                message: 'Startup profile not found. Please complete your startup registration.',
+                code: 'PROFILE_NOT_FOUND',
+                userId: req.user.id,
+                userRole: req.user.role,
+                hasStartupProfileId: !!user?.startupProfileId,
+                suggestion: 'If you just registered, there may have been an issue during profile creation. Please contact support or try registering again.'
+            });
         }
 
         res.json(startupProfile);
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server error' });
+        console.error('Error in getProfile:', error);
+        res.status(500).json({ message: 'Server error', error: error.message });
     }
 };
 
