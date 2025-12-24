@@ -1,0 +1,402 @@
+{
+  "schemas": {
+    "Message": {
+      "description": "Chat message object",
+      "type": "object",
+      "properties": {
+        "_id": {
+          "type": "string",
+          "description": "MongoDB ObjectId",
+          "example": "64abc123def456789ghi0456"
+        },
+        "senderId": {
+          "type": "object",
+          "description": "User who sent the message",
+          "properties": {
+            "_id": { "type": "string", "example": "64abc123def456789ghi0789" },
+            "name": { "type": "string", "example": "John Doe" },
+            "email": { "type": "string", "example": "john@example.com" },
+            "profilePicture": { "type": "string", "example": "https://example.com/avatar.jpg" },
+            "role": { "type": "string", "enum": ["startup", "student", "admin"], "example": "startup" }
+          }
+        },
+        "teamId": {
+          "type": "string",
+          "description": "Team MongoDB ObjectId",
+          "example": "64abc123def456789ghi0123"
+        },
+        "text": {
+          "type": "string",
+          "description": "Message content",
+          "maxLength": 5000,
+          "example": "Hello team! 👋"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 timestamp",
+          "example": "2024-12-24T10:30:00.000Z"
+        },
+        "readBy": {
+          "type": "array",
+          "description": "List of users who read the message",
+          "items": {
+            "type": "object",
+            "properties": {
+              "userId": { "type": "string", "example": "64abc123def456789ghi0789" },
+              "readAt": { "type": "string", "format": "date-time", "example": "2024-12-24T10:31:00.000Z" }
+            }
+          }
+        },
+        "attachments": {
+          "type": "array",
+          "description": "File attachments (future feature)",
+          "items": {
+            "type": "object",
+            "properties": {
+              "type": { "type": "string", "example": "image" },
+              "url": { "type": "string", "example": "https://example.com/file.jpg" }
+            }
+          }
+        },
+        "isDeleted": {
+          "type": "boolean",
+          "description": "Soft delete flag",
+          "example": false
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "example": "2024-12-24T10:30:00.000Z"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "example": "2024-12-24T10:30:00.000Z"
+        }
+      }
+    },
+    "ChatHistoryResponse": {
+      "type": "object",
+      "properties": {
+        "success": { "type": "boolean", "example": true },
+        "count": { "type": "number", "example": 50 },
+        "teamId": { "type": "string", "example": "64abc123def456789ghi0123" },
+        "messages": {
+          "type": "array",
+          "items": { "$ref": "#/schemas/Message" }
+        }
+      }
+    },
+    "ActiveUsersResponse": {
+      "type": "object",
+      "properties": {
+        "teamId": { "type": "string", "example": "64abc123def456789ghi0123" },
+        "users": {
+          "type": "array",
+          "items": { "type": "string" },
+          "example": ["user_id_1", "user_id_2", "user_id_3"]
+        },
+        "count": { "type": "number", "example": 3 }
+      }
+    },
+    "UserActivity": {
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "example": "64abc123def456789ghi0789" },
+        "userName": { "type": "string", "example": "John Doe" },
+        "timestamp": { "type": "string", "format": "date-time", "example": "2024-12-24T10:30:00.000Z" }
+      }
+    },
+    "TypingIndicator": {
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "example": "64abc123def456789ghi0789" },
+        "userName": { "type": "string", "example": "John Doe" }
+      }
+    },
+    "MessageSentConfirmation": {
+      "type": "object",
+      "properties": {
+        "success": { "type": "boolean", "example": true },
+        "messageId": { "type": "string", "example": "64abc123def456789ghi0456" },
+        "timestamp": { "type": "string", "format": "date-time", "example": "2024-12-24T10:30:00.000Z" }
+      }
+    },
+    "ErrorResponse": {
+      "type": "object",
+      "properties": {
+        "message": { "type": "string", "example": "Error description" },
+        "error": { "type": "string", "example": "Detailed error message" },
+        "code": { "type": "string", "example": "ERROR_CODE" }
+      }
+    },
+    "DeleteMessageRequest": {
+      "type": "object",
+      "description": "No body required, messageId in URL params"
+    },
+    "DeleteMessageResponse": {
+      "type": "object",
+      "properties": {
+        "success": { "type": "boolean", "example": true },
+        "message": { "type": "string", "example": "Message deleted successfully" }
+      }
+    },
+    "MarkAsReadRequest": {
+      "type": "object",
+      "properties": {
+        "messageIds": {
+          "type": "array",
+          "items": { "type": "string" },
+          "example": ["msg_id_1", "msg_id_2", "msg_id_3"]
+        }
+      },
+      "required": ["messageIds"]
+    },
+    "MarkAsReadResponse": {
+      "type": "object",
+      "properties": {
+        "success": { "type": "boolean", "example": true },
+        "message": { "type": "string", "example": "Messages marked as read" }
+      }
+    }
+  },
+  "typescript_types": {
+    "Message": "interface Message {\n  _id: string;\n  senderId: {\n    _id: string;\n    name: string;\n    email: string;\n    profilePicture?: string;\n    role: 'startup' | 'student' | 'admin';\n  };\n  teamId: string;\n  text: string;\n  timestamp: string;\n  readBy: {\n    userId: string;\n    readAt: string;\n  }[];\n  attachments: {\n    type: string;\n    url: string;\n  }[];\n  isDeleted: boolean;\n  createdAt: string;\n  updatedAt: string;\n}",
+    "ActiveUsersResponse": "interface ActiveUsersResponse {\n  teamId: string;\n  users: string[];\n  count: number;\n}",
+    "UserActivity": "interface UserActivity {\n  userId: string;\n  userName: string;\n  timestamp: string;\n}",
+    "TypingIndicator": "interface TypingIndicator {\n  userId: string;\n  userName: string;\n}",
+    "MessageSentConfirmation": "interface MessageSentConfirmation {\n  success: boolean;\n  messageId: string;\n  timestamp: string;\n}",
+    "ErrorResponse": "interface ErrorResponse {\n  message: string;\n  error?: string;\n  code?: string;\n}"
+  },
+  "socket_events": {
+    "client_to_server": {
+      "join_team": {
+        "description": "Join a team chat room",
+        "parameters": {
+          "teamId": {
+            "type": "string",
+            "required": true,
+            "description": "MongoDB ObjectId of the team",
+            "example": "64abc123def456789ghi0123"
+          }
+        },
+        "example": "socket.emit('join_team', '64abc123def456789ghi0123');"
+      },
+      "send_message": {
+        "description": "Send a message to the team",
+        "parameters": {
+          "teamId": {
+            "type": "string",
+            "required": true,
+            "description": "MongoDB ObjectId of the team"
+          },
+          "text": {
+            "type": "string",
+            "required": true,
+            "maxLength": 5000,
+            "description": "Message content"
+          }
+        },
+        "example": "socket.emit('send_message', { teamId: '64abc123def456789ghi0123', text: 'Hello!' });"
+      },
+      "leave_team": {
+        "description": "Leave a team chat room",
+        "parameters": {
+          "teamId": {
+            "type": "string",
+            "required": true
+          }
+        },
+        "example": "socket.emit('leave_team', '64abc123def456789ghi0123');"
+      },
+      "typing": {
+        "description": "Notify team members that user is typing",
+        "parameters": {
+          "teamId": {
+            "type": "string",
+            "required": true
+          }
+        },
+        "example": "socket.emit('typing', '64abc123def456789ghi0123');"
+      },
+      "stop_typing": {
+        "description": "Notify team members that user stopped typing",
+        "parameters": {
+          "teamId": {
+            "type": "string",
+            "required": true
+          }
+        },
+        "example": "socket.emit('stop_typing', '64abc123def456789ghi0123');"
+      }
+    },
+    "server_to_client": {
+      "receive_message": {
+        "description": "Receive a new message",
+        "data_schema": "Message",
+        "example": "socket.on('receive_message', (message) => { /* handle message */ });"
+      },
+      "user_joined": {
+        "description": "User joined the team chat",
+        "data_schema": "UserActivity",
+        "example": "socket.on('user_joined', (data) => { /* handle join */ });"
+      },
+      "user_left": {
+        "description": "User left the team chat",
+        "data_schema": "UserActivity",
+        "example": "socket.on('user_left', (data) => { /* handle leave */ });"
+      },
+      "active_users": {
+        "description": "List of currently active users",
+        "data_schema": "ActiveUsersResponse",
+        "example": "socket.on('active_users', (data) => { /* update UI */ });"
+      },
+      "user_typing": {
+        "description": "User is typing",
+        "data_schema": "TypingIndicator",
+        "example": "socket.on('user_typing', (data) => { /* show typing */ });"
+      },
+      "user_stop_typing": {
+        "description": "User stopped typing",
+        "data_schema": "TypingIndicator",
+        "example": "socket.on('user_stop_typing', (data) => { /* hide typing */ });"
+      },
+      "message_sent": {
+        "description": "Message sent confirmation",
+        "data_schema": "MessageSentConfirmation",
+        "example": "socket.on('message_sent', (data) => { /* confirm */ });"
+      },
+      "error": {
+        "description": "Error occurred",
+        "data_schema": "ErrorResponse",
+        "example": "socket.on('error', (error) => { /* handle error */ });"
+      }
+    }
+  },
+  "http_endpoints": {
+    "get_chat_history": {
+      "method": "GET",
+      "path": "/api/chat/:teamId",
+      "description": "Get last 50 messages for a team",
+      "authentication": "Bearer token required",
+      "parameters": {
+        "teamId": {
+          "type": "path",
+          "description": "MongoDB ObjectId of the team",
+          "required": true
+        }
+      },
+      "response": {
+        "200": "ChatHistoryResponse",
+        "400": "ErrorResponse - Invalid team ID",
+        "401": "ErrorResponse - Unauthorized",
+        "403": "ErrorResponse - Not a team member",
+        "404": "ErrorResponse - Team not found"
+      },
+      "example": "GET http://localhost:5000/api/chat/64abc123def456789ghi0123\nAuthorization: Bearer YOUR_JWT_TOKEN"
+    },
+    "delete_message": {
+      "method": "DELETE",
+      "path": "/api/chat/message/:messageId",
+      "description": "Soft delete your own message",
+      "authentication": "Bearer token required",
+      "parameters": {
+        "messageId": {
+          "type": "path",
+          "description": "MongoDB ObjectId of the message",
+          "required": true
+        }
+      },
+      "response": {
+        "200": "DeleteMessageResponse",
+        "400": "ErrorResponse - Invalid message ID",
+        "401": "ErrorResponse - Unauthorized",
+        "403": "ErrorResponse - Can only delete own messages",
+        "404": "ErrorResponse - Message not found"
+      },
+      "example": "DELETE http://localhost:5000/api/chat/message/64abc123def456789ghi0456\nAuthorization: Bearer YOUR_JWT_TOKEN"
+    },
+    "mark_as_read": {
+      "method": "POST",
+      "path": "/api/chat/:teamId/read",
+      "description": "Mark messages as read",
+      "authentication": "Bearer token required",
+      "parameters": {
+        "teamId": {
+          "type": "path",
+          "description": "MongoDB ObjectId of the team",
+          "required": true
+        },
+        "body": "MarkAsReadRequest"
+      },
+      "response": {
+        "200": "MarkAsReadResponse",
+        "400": "ErrorResponse - Invalid message IDs",
+        "401": "ErrorResponse - Unauthorized"
+      },
+      "example": "POST http://localhost:5000/api/chat/64abc123def456789ghi0123/read\nAuthorization: Bearer YOUR_JWT_TOKEN\nContent-Type: application/json\n\n{ \"messageIds\": [\"msg1\", \"msg2\"] }"
+    }
+  },
+  "example_payloads": {
+    "send_message": {
+      "teamId": "64abc123def456789ghi0123",
+      "text": "Hello team! 👋"
+    },
+    "receive_message": {
+      "_id": "64abc123def456789ghi0456",
+      "senderId": {
+        "_id": "64abc123def456789ghi0789",
+        "name": "John Doe",
+        "email": "john@example.com",
+        "profilePicture": "https://example.com/avatar.jpg",
+        "role": "startup"
+      },
+      "teamId": "64abc123def456789ghi0123",
+      "text": "Hello team! 👋",
+      "timestamp": "2024-12-24T10:30:00.000Z",
+      "readBy": [],
+      "attachments": [],
+      "isDeleted": false,
+      "createdAt": "2024-12-24T10:30:00.000Z",
+      "updatedAt": "2024-12-24T10:30:00.000Z"
+    },
+    "active_users": {
+      "teamId": "64abc123def456789ghi0123",
+      "users": [
+        "64abc123def456789ghi0789",
+        "64abc123def456789ghi0790",
+        "64abc123def456789ghi0791"
+      ],
+      "count": 3
+    },
+    "user_activity": {
+      "userId": "64abc123def456789ghi0789",
+      "userName": "John Doe",
+      "timestamp": "2024-12-24T10:30:00.000Z"
+    },
+    "error": {
+      "message": "Access denied: You are not a member of this team",
+      "error": "Authorization failed"
+    }
+  },
+  "validation_rules": {
+    "message_text": {
+      "maxLength": 5000,
+      "minLength": 1,
+      "required": true,
+      "type": "string"
+    },
+    "teamId": {
+      "format": "MongoDB ObjectId (24 hex characters)",
+      "required": true,
+      "example": "64abc123def456789ghi0123"
+    },
+    "messageId": {
+      "format": "MongoDB ObjectId (24 hex characters)",
+      "required": true,
+      "example": "64abc123def456789ghi0456"
+    }
+  }
+}
+

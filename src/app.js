@@ -12,6 +12,7 @@ const startupRoutes = require('./routes/startupRoutes');
 const studentRoutes = require('./routes/studentRoutes');
 const feedRoutes = require('./routes/feedRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const chatRoutes = require('./routes/chatRoutes');
 
 const app = express();
 
@@ -37,6 +38,7 @@ app.use('/api/startups', startupRoutes);
 app.use('/api/students', studentRoutes);
 app.use('/api/feed', feedRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/chat', chatRoutes);
 
 // Error Handling Middleware
 app.use((err, req, res, next) => {
